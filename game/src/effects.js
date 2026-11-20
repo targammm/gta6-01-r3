@@ -1,11 +1,12 @@
 // Pooled particle cloud (dust / smoke / sparks / muzzle flash) + skid marks.
 // One THREE.Points, 600 slots, dead particles parked far below the city.
+// The muzzle flash also gets a bright additive quad so it reads in a still.
 import * as THREE from 'three';
 
 const MAX_PARTICLES = 600;
 const MAX_SKIDS = 90;
 
-export function createEffects(scene) {
+export function createEffects(scene, camera) {
   const positions = new Float32Array(MAX_PARTICLES * 3);
   const colors = new Float32Array(MAX_PARTICLES * 3);
   for (let i = 0; i < MAX_PARTICLES; i++) positions[i * 3 + 1] = -100;
@@ -19,8 +20,17 @@ export function createEffects(scene) {
   points.frustumCulled = false;
   scene.add(points);
 
+  const flashMat = new THREE.MeshBasicMaterial({
+    color: 0xffc21c, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const flash = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), flashMat);
+  flash.visible = false;
+  scene.add(flash);
+
   return {
     scene,
+    camera,
     points,
     positions,
     colors,
@@ -30,6 +40,8 @@ export function createEffects(scene) {
     cursor: 0,
     skids: [],
     skidGeo: new THREE.PlaneGeometry(0.5, 1.4),
+    flash,
+    flashTimer: 0,
   };
 }
 
@@ -73,7 +85,8 @@ export function burstSparks(effects, x, y, z, n = 10) {
   }
 }
 
-// Big bright muzzle flash: a fan of hot sparks plus a short-lived light puff.
+// Big bright muzzle flash: a fan of hot sparks, a light puff, and a glowing
+// quad at the muzzle so the shot reads in a still frame.
 export function muzzleFlash(effects, x, y, z, dx, dy, dz) {
   for (let i = 0; i < 14; i++) {
     const spread = 0.35;
@@ -87,6 +100,11 @@ export function muzzleFlash(effects, x, y, z, dx, dy, dz) {
     spawnParticle(effects, x + dx * 0.7, y, z + dz * 0.7,
       (Math.random() - 0.5) * 4, 1 + Math.random() * 2, (Math.random() - 0.5) * 4,
       0.12 + Math.random() * 0.1, 1.0, 0.95, 0.6);
+  }
+  if (effects.flash) {
+    effects.flash.position.set(x + dx * 0.8, y, z + dz * 0.8);
+    effects.flash.visible = true;
+    effects.flashTimer = 0.08;
   }
 }
 
@@ -107,6 +125,15 @@ export function dropSkid(effects, x, z, heading) {
 
 export function updateEffects(effects, dt) {
   const { positions, vel, life } = effects;
+  if (effects.flashTimer > 0) {
+    effects.flashTimer -= dt;
+    effects.flash.material.opacity = Math.max(0, effects.flashTimer / 0.08);
+    if (effects.camera) {
+      effects.flash.lookAt(effects.camera.position);
+      effects.flash.rotateZ(Math.PI / 4);
+    }
+    if (effects.flashTimer <= 0) effects.flash.visible = false;
+  }
   for (let i = 0; i < MAX_PARTICLES; i++) {
     if (life[i] <= 0) continue;
     life[i] -= dt;

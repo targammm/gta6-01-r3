@@ -106,7 +106,7 @@ export const MISSIONS = [
     reward: 600,
     xp: 150,
     steps: [
-      { type: 'escape', label: 'Lose the cops — get your wanted level to zero' },
+      { type: 'escape', label: 'Lose the cops — wanted level to zero' },
       { type: 'goto', label: 'Reach the hideout under Coral Bridge', x: -150, z: 150, radius: 8 },
     ],
   },
@@ -118,7 +118,7 @@ export const MISSIONS = [
     xp: 250,
     steps: [
       { type: 'goto', label: 'Reach the harbour crates', x: 150, z: -150, radius: 9 },
-      { type: 'fight', label: 'Clear the harbour — defeat all 3 Vipers' },
+      { type: 'fight', label: 'Defeat all 3 Vipers' },
       { type: 'goto', label: 'Grab the harbour cut', x: 150, z: -150, radius: 6 },
     ],
   },

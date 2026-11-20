@@ -180,7 +180,9 @@ export function driveCar(world, car, dt, axes) {
   car.x = clamped.x;
   car.z = clamped.z;
 
-  // Bumping other cars slows you and shoves them.
+  // Bumping other cars shoves them forward and costs speed once per contact —
+  // never a per-step multiplier, or the car grinds to a halt in traffic.
+  car.bumpCooldown = Math.max(0, (car.bumpCooldown || 0) - dt);
   for (const other of world.cars) {
     if (other === car) continue;
     const d = Math.hypot(other.x - car.x, other.z - car.z);
@@ -190,11 +192,15 @@ export function driveCar(world, car, dt, axes) {
       const uz = (other.z - car.z) / d;
       other.x += ux * push;
       other.z += uz * push;
-      if (Math.abs(car.speed) > 8) {
-        playCrash(world.audio, 0.5);
-        world.cameraShake = Math.max(world.cameraShake, 0.25);
+      other.speed = Math.max(other.speed || 0, car.speed * 0.7);
+      if (car.bumpCooldown <= 0) {
+        car.bumpCooldown = 0.5;
+        if (Math.abs(car.speed) > 8) {
+          playCrash(world.audio, 0.5);
+          world.cameraShake = Math.max(world.cameraShake, 0.25);
+        }
+        car.speed *= 0.85;
       }
-      car.speed *= 0.85;
     }
   }
 

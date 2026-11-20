@@ -14,7 +14,7 @@ export function makeWindowTexture(rng, variant) {
   c.width = 128;
   c.height = 256;
   const g = c.getContext('2d');
-  g.fillStyle = '#2c2f36';
+  g.fillStyle = '#5d636e';
   g.fillRect(0, 0, 128, 256);
   const glows = ['#ffd98a', '#ffe9b0', '#9fd8ff', '#ffb36b'];
   const glow = glows[variant % glows.length];
@@ -24,7 +24,7 @@ export function makeWindowTexture(rng, variant) {
         g.fillStyle = glow;
         g.globalAlpha = 0.55 + rng() * 0.45;
       } else {
-        g.fillStyle = '#171a20';
+        g.fillStyle = '#2a2e36';
         g.globalAlpha = 1;
       }
       g.fillRect(x, y, 9, 11);
@@ -50,13 +50,13 @@ export function makeRoadTexture() {
   // Sidewalk corridors first (wider), then asphalt on top.
   for (const r of WORLD.roads) {
     const w = toPx(r + WORLD.roadHalf + 5.5) - toPx(r - WORLD.roadHalf - 5.5);
-    g.fillStyle = '#9b9b90';
+    g.fillStyle = '#a9a99d';
     g.fillRect(toPx(r - WORLD.roadHalf - 5.5), 0, w, S);
     g.fillRect(0, toPx(r - WORLD.roadHalf - 5.5), S, w);
   }
   for (const r of WORLD.roads) {
     const w = toPx(r + WORLD.roadHalf) - toPx(r - WORLD.roadHalf);
-    g.fillStyle = '#3b3b42';
+    g.fillStyle = '#484852';
     g.fillRect(toPx(r - WORLD.roadHalf), 0, w, S);
     g.fillRect(0, toPx(r - WORLD.roadHalf), S, w);
     // Centre dashes.
@@ -136,11 +136,14 @@ export function createCity(scene, rng) {
       const h = d.minH + rng() * (d.maxH - d.minH);
       const x = bx + ox;
       const z = bz + oz;
+      // Never cover the player spawn (0, 40): a tower on top of it would
+      // trap the player inside a wall on the first step.
+      if (0 > x - w / 2 - 1 && 0 < x + w / 2 + 1 && 40 > z - dep / 2 - 1 && 40 < z + dep / 2 + 1) continue;
       const tint = new THREE.Color(d.tint);
       tint.offsetHSL(0, 0, (rng() - 0.5) * 0.12);
       const tex = windowTex[Math.floor(rng() * 4)];
       const mat = new THREE.MeshLambertMaterial({
-        map: tex, color: tint, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.25,
+        map: tex, color: tint, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.35,
       });
       const tower = new THREE.Mesh(new THREE.BoxGeometry(w, h, dep), mat);
       tower.position.set(x, h / 2, z);
@@ -186,7 +189,7 @@ export function createCity(scene, rng) {
   const bulbGeo = new THREE.SphereGeometry(0.28, 8, 6);
   for (const r of WORLD.roads) {
     for (let m = -180; m <= 180; m += 36) {
-      for (const [x, z] of [[r + 8.6, m], [r - 8.6, m], [m, r + 8.6], [m, r - 8.6]]) {
+      for (const [x, z] of [[r + 8.6, m], [m, r - 8.6]]) {
         const pole = new THREE.Mesh(lampGeo, poleMat);
         pole.position.set(x, 3.5, z);
         city.group.add(pole);

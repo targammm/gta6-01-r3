@@ -22,7 +22,8 @@ if (shot) {
   renderFrame(world.render, world.render.scene, world.render.camera);
   window.__shotReady = true;
 } else {
-  // Live game loop: fixed 1/60 s steps, at most 5 per rendered frame.
+  // Live game loop: fixed 1/60 s steps, at most 10 per rendered frame so the
+  // simulation keeps up on slow machines instead of crawling in wall time.
   const STEP = 1 / 60;
   let acc = 0;
   let last = performance.now();
@@ -34,12 +35,12 @@ if (shot) {
     last = now;
     acc += dt;
     let n = 0;
-    while (acc >= STEP && n < 5) {
+    while (acc >= STEP && n < 10) {
       stepWorld(world, STEP);
       acc -= STEP;
       n++;
     }
-    if (n === 5) acc = 0;
+    if (n === 10) acc = 0;
     renderFrame(world.render, world.render.scene, world.render.camera);
     requestAnimationFrame(frame);
   }

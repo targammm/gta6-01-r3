@@ -22,7 +22,13 @@ export function driveFor(world, seconds, waypoints) {
   let wp = 0;
   for (let i = 0; i < steps; i++) {
     const car = world.player.inCar;
-    if (!car || wp >= waypoints.length) {
+    if (!car) {
+      stepWorld(world, STEP);
+      continue;
+    }
+    if (wp >= waypoints.length) {
+      // No more waypoints: keep driving straight at full throttle.
+      world.autopilot = { steer: 0, throttle: 1, brake: 0 };
       stepWorld(world, STEP);
       continue;
     }
@@ -33,16 +39,18 @@ export function driveFor(world, seconds, waypoints) {
     let dh = wantAngle - car.heading;
     while (dh > Math.PI) dh -= Math.PI * 2;
     while (dh < -Math.PI) dh += Math.PI * 2;
+    // How sharp is the turn at this waypoint? Brake from 50 m out when the
+    // next leg bends hard and we are still fast.
     const next = waypoints[Math.min(wp + 1, waypoints.length - 1)];
-    const nd = Math.hypot(next[0] - car.x, next[1] - car.z);
-    const nextAngle = Math.atan2(next[0] - car.x, next[1] - car.z);
-    let ndh = nextAngle - car.heading;
-    while (ndh > Math.PI) ndh -= Math.PI * 2;
-    while (ndh < -Math.PI) ndh += Math.PI * 2;
+    const legAngle = Math.atan2(next[0] - tx, next[1] - tz);
+    let turn = legAngle - wantAngle;
+    while (turn > Math.PI) turn -= Math.PI * 2;
+    while (turn < -Math.PI) turn += Math.PI * 2;
+    const sharp = Math.abs(turn) > 0.5;
     world.autopilot = {
       steer: clamp(dh * 1.4, -1, 1),
-      throttle: Math.abs(ndh) > 0.5 ? 0.25 : 1,
-      brake: Math.abs(ndh) > 0.5 && nd < 50 && Math.abs(car.speed) > 14 ? 1 : 0,
+      throttle: sharp && d < 60 ? 0.25 : 1,
+      brake: sharp && d < 50 && Math.abs(car.speed) > 14 ? 1 : 0,
     };
     stepWorld(world, STEP);
   }
@@ -109,7 +117,9 @@ export function placeVipers(world) {
     world.render.scene.remove(e.group);
   }
   world.enemies.length = 0;
-  const spots = [[150, -126], [144, -124.5], [156, -124.5]];
+  // In FRONT of the player: he faces -z (heading PI), so the Vipers stand at
+  // more negative z — 6 m dead ahead in the crosshair, two flanking at ~9.5 m.
+  const spots = [[150, -138], [144, -139.5], [156, -139.5]];
   const delays = [0.005, 0.02, 0.04];
   spots.forEach(([x, z], i) => {
     const e = spawnEnemy(world, x, z);
@@ -131,8 +141,9 @@ export function applyShotStaging(world, name) {
     const car = spawnParkedCar(world, 'sedan', 90, 60, 0, 0xc22a1e);
     putPlayerInCar(world, car);
     driveFor(world, 9, [[90, 150], [-90, 150], [-90, -150], [90, -150]]);
-    // Three cruisers tucked in behind the car, matched to its speed.
-    const slots = [[10, -3.5], [16, 4], [24, -2]];
+    // Three cruisers tucked in behind the car, matched to its speed — fanned
+    // wide enough to peek out from behind the sedan for the front camera.
+    const slots = [[10, -5.5], [16, 5], [24, -4.5]];
     for (const [back, side] of slots) {
       const fx = Math.sin(car.heading);
       const fz = Math.cos(car.heading);
@@ -148,6 +159,35 @@ export function applyShotStaging(world, name) {
     world.render.camera.position.y = 3.4;
     world.render.camera.position.x += Math.sin(car.heading) * -1.5;
     world.render.camera.position.z += Math.cos(car.heading) * -1.5;
+    // A boost car that landed on the lens would fill the frame with one slab
+    // of paint — pull any car within 10 m of the camera, or inside the 5 m
+    // view corridor between the camera and the player's sedan, out of the shot.
+    const cam = world.render.camera.position;
+    const distToSegment = (px, pz, ax, az, bx, bz) => {
+      const dx = bx - ax;
+      const dz = bz - az;
+      const len2 = dx * dx + dz * dz;
+      let t = len2 === 0 ? 0 : ((px - ax) * dx + (pz - az) * dz) / len2;
+      t = clamp(t, 0, 1);
+      return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+    };
+    for (const c of [...world.traffic]) {
+      const nearCam = Math.hypot(c.x - cam.x, c.z - cam.z) < 10;
+      const inCorridor = distToSegment(c.x, c.z, cam.x, cam.z, car.x, car.z) < 5;
+      if (nearCam || inCorridor) {
+        world.render.scene.remove(c.group);
+        world.traffic.splice(world.traffic.indexOf(c), 1);
+        world.cars.splice(world.cars.indexOf(c), 1);
+      }
+    }
+    // The car drove forward into the boost crowd — clear pedestrians that
+    // ended up touching the sedan so nobody stands on the bonnet.
+    for (const ped of [...world.peds]) {
+      if (Math.hypot(ped.x - car.x, ped.z - car.z) < 4) {
+        world.render.scene.remove(ped.group);
+        world.peds.splice(world.peds.indexOf(ped), 1);
+      }
+    }
   } else if (name === 'city') {
     // After mission 1 (progression visible) and about to steal the taxi.
     world.money = 400;
@@ -158,8 +198,10 @@ export function applyShotStaging(world, name) {
     world.troubleTimer = 0;
     spawnParkedCar(world, 'taxi', 20, 156.5, Math.PI, 0xffc21c);
     setPlayerOnFoot(world, 20, 158.5, Math.PI);
-    boostDensityNear(world, 20, 150, 8, 12);
     stepN(world, 360);
+    // Boost AFTER the simulation so the crowd is still around the player
+    // at capture instead of having driven off down the avenue.
+    boostDensityNear(world, 20, 150, 8, 12);
     setPlayerOnFoot(world, 20, 158.5, Math.PI);
     stepN(world, 30);
   } else if (name === 'mission') {

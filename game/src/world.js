@@ -44,7 +44,7 @@ export function createWorld(canvas, seed) {
   world.city = createCity(world.render.scene, world.rng);
   world.input = createInput(canvas);
   world.player = createPlayer(world.render.scene);
-  world.effects = createEffects(world.render.scene);
+  world.effects = createEffects(world.render.scene, world.render.camera);
   world.audio = createAudio();
   world.hud = createHud();
   createTraffic(world);

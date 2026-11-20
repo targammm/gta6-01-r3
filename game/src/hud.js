@@ -27,7 +27,7 @@ export function createHud() {
   hud.speed = el('div', 'hud-speed', root);
   hud.prompt = el('div', 'hud-prompt', root);
   hud.controls = el('div', 'hud-controls', root);
-  hud.controls.textContent = CONTROLS.join('  ·  ');
+  hud.controls.textContent = 'WASD move · E enter car · F shoot · Space jump · P pause';
   hud.crosshair = el('div', 'hud-crosshair', root);
   hud.crosshair.textContent = '+';
   hud.minimap = el('canvas', 'hud-minimap', root);
@@ -118,7 +118,7 @@ export function updateHud(world) {
       hud.titleSave.textContent = 'New game — no save yet';
     }
   }
-  for (const key of ['money', 'sub', 'objective', 'stars', 'healthWrap', 'speed', 'controls', 'minimap']) {
+  for (const key of ['money', 'sub', 'objective', 'stars', 'healthWrap', 'controls', 'minimap']) {
     if (hud[key]) hud[key].style.display = showHud ? '' : 'none';
   }
   if (showHud) drawMinimap(world);
