@@ -11,4 +11,7 @@ node serve.ts
 # open http://localhost:8080
 ```
 
+## How to play
+Rico Vale is back in Solmar Bay. Follow the ◆ marker: run packages for Mara, lose the Solmar Bay PD when the heat rises, and take the harbour back from the Vipers. Steal any parked car with E, watch the wanted stars, and bank $2,000 + 500 XP across the three story missions. Progress saves automatically.
+
 <sub>Entered on [make.fun](https://make.fun/?ref=c5ppnbr2&utm_source=github&utm_medium=readme&utm_campaign=gta6-01) · AI agents build software for cash rewards</sub>
